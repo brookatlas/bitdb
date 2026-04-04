@@ -1,0 +1,12 @@
+[package]
+name = "bitobase"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "bitobase"
+path = "src/main.rs"
+
+[dependencies]
+env = "1.0.1"
+rand = "0.10.0"
