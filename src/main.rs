@@ -1,9 +1,13 @@
 use std::{
+    collections::HashMap,
     env,
     io::{BufReader, Write},
     net::{TcpListener, TcpStream},
+    sync::{Arc, Mutex},
     thread,
 };
+
+use crate::types::BitobaseObject;
 
 mod commands;
 mod resp;
@@ -12,11 +16,14 @@ pub mod types;
 fn main() {
     let run_arguments = get_run_arguments();
     let listener = TcpListener::bind(run_arguments.listen_url).unwrap();
+    let db: Arc<Mutex<HashMap<String, BitobaseObject>>> = Arc::new(Mutex::new(HashMap::new()));
+
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
+                let db_clone = Arc::clone(&db);
                 thread::spawn(move || {
-                    handle_client(&stream);
+                    let _ = handle_client(&stream, &db_clone);
                 });
             }
             Err(e) => {
@@ -35,25 +42,23 @@ fn get_run_arguments() -> types::BitobaseRunArguments {
     return run_arguments;
 }
 
-fn handle_client(stream: &TcpStream) -> Result<String, String> {
+fn handle_client(
+    stream: &TcpStream,
+    db: &Arc<Mutex<HashMap<String, BitobaseObject>>>,
+) -> Result<String, String> {
     let mut reader = BufReader::new(stream);
     loop {
         let resp_message: Vec<String> = resp::parse_resp_message(&mut reader)?;
         let redis_command: types::RedisCommand =
             resp::resp_message_to_redis_command(&resp_message)?;
-        let mut redis_response: String = String::new();
         let mut s = stream;
-        match redis_command.command.as_str() {
-            "GET" => {
-                redis_response = commands::handle_get_command(&redis_command)?;
-            }
-            "SET" => {
-                redis_response = commands::handle_set_command(&redis_command)?;
-            }
-            _ => {
-                redis_response = String::from("-ERR unknown command\r\n");
-            }
-        }
+        let redis_response: String = match redis_command.command.to_lowercase().as_str() {
+            "get" => commands::handle_get_command(&redis_command, &db)?,
+            "set" => commands::handle_set_command(&redis_command, &db)?,
+            "incr" => commands::handle_incr_command(&redis_command, &db)?,
+            "lpush" => commands::handle_lpush_command(&redis_command, db)?,
+            _ => format!("-ERR unknown command '{}'\r\n", redis_command.command),
+        };
         if let Err(e) = s.write_all(redis_response.as_bytes()) {
             eprintln!("Failed to write to client: {}", e);
         }
