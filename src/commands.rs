@@ -80,7 +80,7 @@ pub fn handle_lpush_command(
     command: &types::RedisCommand,
     db: &Arc<Mutex<HashMap<String, BitobaseObject>>>,
 ) -> Result<String, String> {
-    if command.args.len() != 1 {
+    if command.args.len() < 2 {
         return Ok(format!(
             "-ERR wrong number of arguments for 'lpush' command\r\n"
         ));
@@ -88,24 +88,17 @@ pub fn handle_lpush_command(
     {
         let mut data = db.lock().unwrap();
         let key = command.args[0].clone();
-        let new_value = command.args[1].clone();
+        let values = &command.args[1..];
 
-        if let Some(value) = data.get_mut(&key) {
-            match value {
-                BitobaseObject::List(l) => {
-                    l.push_front(new_value.to_string());
-                    return Ok(String::from("+OK\r\n"));
-                }
-                BitobaseObject::String(_) => {
-                    return Ok(String::from("-ERR expected list but found string.\r\n"));
-                }
-            }
-        } else {
-            let mut list: VecDeque<String> = VecDeque::new();
-            list.push_back(new_value);
-            let object: BitobaseObject = BitobaseObject::List(list);
-            data.insert(key, object);
-            return Ok(String::from("+OK\r\n"));
+        if matches!(data.get(&key), Some(BitobaseObject::String(_))) {
+            return Ok(String::from("-ERR expected list but found string.\r\n"));
         }
+        let object = data.entry(key).or_insert_with(|| BitobaseObject::List(VecDeque::new()));
+        if let BitobaseObject::List(l) = object {
+            for value in values.iter() {
+                l.push_front(value.to_string());
+            }
+        }
+        return Ok(format!("+Ok \r\n"))
     }
 }
