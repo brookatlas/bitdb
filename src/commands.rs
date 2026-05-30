@@ -4,6 +4,18 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+pub fn handle_select_command(
+    command: &types::RedisCommand,
+    _: &Arc<Mutex<HashMap<String, BitobaseObject>>>,
+) -> Result<String, String> {
+    if command.args.len() < 1 {
+        return Ok(format!(
+            "-ERR wrong number of arguments for 'select' command\r\n"
+        ));
+    }
+    return Ok(format!("+OK\r\n"));
+}
+
 pub fn handle_ping_command(
     _: &types::RedisCommand,
     _: &Arc<Mutex<HashMap<String, BitobaseObject>>>,
