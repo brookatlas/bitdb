@@ -53,6 +53,7 @@ fn handle_client(
             resp::resp_message_to_redis_command(&resp_message)?;
         let mut s = stream;
         let redis_response: String = match redis_command.command.to_lowercase().as_str() {
+            "ping" => commands::handle_ping_command(&redis_command, &db)?,
             "get" => commands::handle_get_command(&redis_command, &db)?,
             "set" => commands::handle_set_command(&redis_command, &db)?,
             "incr" => commands::handle_incr_command(&redis_command, &db)?,
