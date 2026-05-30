@@ -4,6 +4,13 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+pub fn handle_ping_command(
+    _: &types::RedisCommand,
+    _: &Arc<Mutex<HashMap<String, BitobaseObject>>>,
+) -> Result<String, String> {
+    return Ok(format!("+PONG\r\n"));
+}
+
 pub fn handle_get_command(
     command: &types::RedisCommand,
     db: &Arc<Mutex<HashMap<String, BitobaseObject>>>,
