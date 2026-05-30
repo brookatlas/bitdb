@@ -93,12 +93,43 @@ pub fn handle_lpush_command(
         if matches!(data.get(&key), Some(BitobaseObject::String(_))) {
             return Ok(String::from("-ERR expected list but found string.\r\n"));
         }
-        let object = data.entry(key).or_insert_with(|| BitobaseObject::List(VecDeque::new()));
+        let object = data
+            .entry(key)
+            .or_insert_with(|| BitobaseObject::List(VecDeque::new()));
         if let BitobaseObject::List(l) = object {
             for value in values.iter() {
                 l.push_front(value.to_string());
             }
         }
-        return Ok(format!("+Ok \r\n"))
+        return Ok(format!("+Ok \r\n"));
+    }
+}
+
+pub fn handle_rpush_command(
+    command: &types::RedisCommand,
+    db: &Arc<Mutex<HashMap<String, BitobaseObject>>>,
+) -> Result<String, String> {
+    if command.args.len() < 2 {
+        return Ok(format!(
+            "-ERR wrong number of arguments for 'rpush' command\r\n"
+        ));
+    }
+    {
+        let mut data = db.lock().unwrap();
+        let key = command.args[0].clone();
+        let values = &command.args[1..];
+
+        if matches!(data.get(&key), Some(BitobaseObject::String(_))) {
+            return Ok(String::from("-ERR expected list but found string.\r\n"));
+        }
+        let object = data
+            .entry(key)
+            .or_insert_with(|| BitobaseObject::List(VecDeque::new()));
+        if let BitobaseObject::List(l) = object {
+            for value in values.iter() {
+                l.push_back(value.to_string());
+            }
+        }
+        return Ok(format!("+Ok \r\n"));
     }
 }
