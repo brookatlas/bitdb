@@ -57,6 +57,7 @@ fn handle_client(
             "set" => commands::handle_set_command(&redis_command, &db)?,
             "incr" => commands::handle_incr_command(&redis_command, &db)?,
             "lpush" => commands::handle_lpush_command(&redis_command, db)?,
+            "rpush" => commands::handle_rpush_command(&redis_command, db)?,
             _ => format!("-ERR unknown command '{}'\r\n", redis_command.command),
         };
         if let Err(e) = s.write_all(redis_response.as_bytes()) {
