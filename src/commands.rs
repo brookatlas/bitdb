@@ -63,6 +63,31 @@ pub fn handle_set_command(
     return Ok(String::from("+OK\r\n"));
 }
 
+pub fn handle_mset_command(
+    command: &types::RedisCommand,
+    db: &Arc<Mutex<HashMap<String, BitobaseObject>>>,
+) -> Result<String, String> {
+    if command.args.len() < 2 {
+        return Ok(format!(
+            "-ERR wrong number of arguments for 'mset' command\r\n"
+        ));
+    }
+    {
+        let mut data = db
+            .lock()
+            .map_err(|_| "-ERR server lock failed".to_string())?;
+        let count = command.args.len();
+        for index in 0..(count - 1) {
+            let key = command.args[index].clone();
+            let value = command.args[index + 1].clone();
+            let object: BitobaseObject = BitobaseObject::String(value);
+            data.insert(key, object);
+        }
+    }
+
+    return Ok(String::from("+OK\r\n"));
+}
+
 pub fn handle_incr_command(
     command: &types::RedisCommand,
     db: &Arc<Mutex<HashMap<String, BitobaseObject>>>,

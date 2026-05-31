@@ -63,6 +63,7 @@ fn handle_client(
             "ping" => commands::handle_ping_command(&redis_command, &db)?,
             "get" => commands::handle_get_command(&redis_command, &db)?,
             "set" => commands::handle_set_command(&redis_command, &db)?,
+            "mset" => commands::handle_mset_command(&redis_command, &db)?,
             "incr" => commands::handle_incr_command(&redis_command, &db)?,
             "lpush" => commands::handle_lpush_command(&redis_command, db)?,
             "rpush" => commands::handle_rpush_command(&redis_command, db)?,
