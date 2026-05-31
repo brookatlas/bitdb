@@ -152,3 +152,71 @@ pub fn handle_rpush_command(
         return Ok(format!("+Ok \r\n"));
     }
 }
+
+pub fn handle_lpop_command(
+    command: &types::RedisCommand,
+    db: &Arc<Mutex<HashMap<String, BitobaseObject>>>,
+) -> Result<String, String> {
+    if command.args.len() < 2 {
+        return Ok(format!(
+            "-ERR wrong number of arguments for 'lpop' command\r\n"
+        ));
+    } else {
+        let key = command.args[0].clone();
+        let count = command.args[1]
+            .clone()
+            .parse::<i32>()
+            .map_err(|_| "count was not a integer")?;
+        let mut db = db
+            .lock()
+            .map_err(|_| "-ERR server lock failed".to_string())?;
+        match db.get_mut(&key) {
+            Some(BitobaseObject::List(l)) => {
+                for _ in 0..count {
+                    l.pop_front();
+                }
+                return Ok("+OK\r\n".to_string());
+            }
+            Some(BitobaseObject::String(_)) => {
+                return Ok(format!("-ERR wrong data type for 'lpop' command"));
+            }
+            None => {
+                return Ok("+(nil)\r\n".to_string());
+            }
+        }
+    }
+}
+
+pub fn handle_rpop_command(
+    command: &types::RedisCommand,
+    db: &Arc<Mutex<HashMap<String, BitobaseObject>>>,
+) -> Result<String, String> {
+    if command.args.len() < 2 {
+        return Ok(format!(
+            "-ERR wrong number of arguments for 'rpop' command\r\n"
+        ));
+    } else {
+        let key = command.args[0].clone();
+        let count = command.args[1]
+            .clone()
+            .parse::<i32>()
+            .map_err(|_| "count was not a integer")?;
+        let mut db = db
+            .lock()
+            .map_err(|_| "-ERR server lock failed".to_string())?;
+        match db.get_mut(&key) {
+            Some(BitobaseObject::List(l)) => {
+                for _ in 0..count {
+                    l.pop_back();
+                }
+                return Ok("+OK\r\n".to_string());
+            }
+            Some(BitobaseObject::String(_)) => {
+                return Ok(format!("-ERR wrong data type for 'rpop' command"));
+            }
+            None => {
+                return Ok("+(nil)\r\n".to_string());
+            }
+        }
+    }
+}

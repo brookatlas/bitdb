@@ -15,7 +15,13 @@ pub mod types;
 
 fn main() {
     let run_arguments = get_run_arguments();
-    let listener = TcpListener::bind(run_arguments.listen_url).unwrap();
+    let listener = match TcpListener::bind(&run_arguments.listen_url) {
+        Ok(l) => l,
+        Err(e) => {
+            eprintln!("Failed to bind: {}: {}", run_arguments.listen_url, e);
+            std::process::exit(1);
+        }
+    };
     let db: Arc<Mutex<HashMap<String, BitobaseObject>>> = Arc::new(Mutex::new(HashMap::new()));
 
     for stream in listener.incoming() {
@@ -60,6 +66,8 @@ fn handle_client(
             "incr" => commands::handle_incr_command(&redis_command, &db)?,
             "lpush" => commands::handle_lpush_command(&redis_command, db)?,
             "rpush" => commands::handle_rpush_command(&redis_command, db)?,
+            "lpop" => commands::handle_lpop_command(&redis_command, db)?,
+            "rpop" => commands::handle_rpop_command(&redis_command, db)?,
             _ => format!("-ERR unknown command '{}'\r\n", redis_command.command),
         };
         if let Err(e) = s.write_all(redis_response.as_bytes()) {
