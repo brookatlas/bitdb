@@ -46,7 +46,15 @@ pub fn parse_resp_message(reader: &mut BufReader<&TcpStream>) -> Result<Vec<Stri
                     result.push(message);
                 }
                 _ => {
-                    return Err(format!("unknown Resp Symbol: {}", c));
+                    let mut line = String::new();
+                    reader.read_line(&mut line).map_err(|e| e.to_string())?;
+                    let full = format!(
+                        "{}{}",
+                        c,
+                        line.trim_end_matches("\r\n").trim_end_matches("\n")
+                    );
+                    let parts: Vec<String> = full.split_whitespace().map(String::from).collect();
+                    result.extend(parts);
                 }
             }
         }
@@ -108,4 +116,12 @@ pub fn parse_resp_bulk_string(reader: &mut BufReader<&TcpStream>) -> Result<Stri
     string_buffer = string_buffer.trim().to_string();
 
     return Ok(string_buffer);
+}
+
+pub fn resp_array(items: &[&str]) -> String {
+    let mut resp = format!("*{}\r\n", items.len());
+    for item in items {
+        resp.push_str(&format!("${}\r\n{}\r\n", item.len(), item));
+    }
+    return resp;
 }
