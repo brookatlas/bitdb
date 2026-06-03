@@ -1,9 +1,9 @@
+use dashmap::DashMap;
 use std::{
-    collections::HashMap,
     env,
     io::{BufReader, Write},
     net::{TcpListener, TcpStream},
-    sync::{Arc, Mutex},
+    sync::Arc,
     thread,
 };
 
@@ -22,11 +22,12 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let db: Arc<Mutex<HashMap<String, BitobaseObject>>> = Arc::new(Mutex::new(HashMap::new()));
+    let db: Arc<DashMap<String, BitobaseObject>> = Arc::new(DashMap::new());
 
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
+                stream.set_nodelay(true).unwrap();
                 let db_clone = Arc::clone(&db);
                 thread::spawn(move || {
                     let _ = handle_client(&stream, &db_clone);
@@ -50,11 +51,17 @@ fn get_run_arguments() -> types::BitobaseRunArguments {
 
 fn handle_client(
     stream: &TcpStream,
-    db: &Arc<Mutex<HashMap<String, BitobaseObject>>>,
+    db: &Arc<DashMap<String, BitobaseObject>>,
 ) -> Result<String, String> {
     let mut reader = BufReader::new(stream);
     loop {
-        let resp_message: Vec<String> = resp::parse_resp_message(&mut reader)?;
+        let resp_message: Vec<String> = match resp::parse_resp_message(&mut reader) {
+            Ok(msg) => msg,
+            Err(e) => {
+                eprintln!("PARSE ERROR: {:?}", e);
+                return Err(e);
+            }
+        };
         let redis_command: types::RedisCommand =
             resp::resp_message_to_redis_command(&resp_message)?;
         let mut s = stream;
@@ -63,11 +70,13 @@ fn handle_client(
             "ping" => commands::handle_ping_command(&redis_command, &db)?,
             "get" => commands::handle_get_command(&redis_command, &db)?,
             "set" => commands::handle_set_command(&redis_command, &db)?,
+            "mset" => commands::handle_mset_command(&redis_command, &db)?,
             "incr" => commands::handle_incr_command(&redis_command, &db)?,
             "lpush" => commands::handle_lpush_command(&redis_command, db)?,
             "rpush" => commands::handle_rpush_command(&redis_command, db)?,
             "lpop" => commands::handle_lpop_command(&redis_command, db)?,
             "rpop" => commands::handle_rpop_command(&redis_command, db)?,
+            "config" => commands::handle_config_command(&redis_command, db)?,
             _ => format!("-ERR unknown command '{}'\r\n", redis_command.command),
         };
         if let Err(e) = s.write_all(redis_response.as_bytes()) {

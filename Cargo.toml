@@ -8,5 +8,6 @@ name = "bitobase"
 path = "src/main.rs"
 
 [dependencies]
+dashmap = "6.2.1"
 env = "1.0.1"
 rand = "0.10.0"
